@@ -6,7 +6,6 @@
   const MIN_ITEMS = 2;
   const MAX_ITEMS = 30;
   const MAX_LABEL = 40;
-  const MAX_HISTORY = 30;
   const DURATIONS = [3000, 5000, 8000];
   const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif';
   const PALETTE = [
@@ -59,7 +58,6 @@
         { id: 'wer', name: 'Wer ist dran?', items: ['Ich', 'Du'], eliminated: [] },
       ],
       settings: { sound: true, haptics: true, removeWinner: false, duration: 5000 },
-      history: [],
     };
   }
 
@@ -91,14 +89,8 @@
       removeWinner: typeof s.removeWinner === 'boolean' ? s.removeWinner : fallback.settings.removeWinner,
       duration: DURATIONS.includes(s.duration) ? s.duration : fallback.settings.duration,
     };
-    const history = Array.isArray(raw.history)
-      ? raw.history
-          .filter((h) => h && typeof h.label === 'string' && Number.isFinite(h.t) && Math.abs(h.t) < 8.64e15)
-          .slice(0, MAX_HISTORY)
-          .map((h) => ({ t: h.t, label: h.label, wheel: String(h.wheel ?? ''), color: String(h.color ?? '') }))
-      : [];
     const activeId = wheels.some((w) => w.id === raw.activeId) ? raw.activeId : wheels[0].id;
-    return { activeId, wheels, settings, history };
+    return { activeId, wheels, settings };
   }
 
   function load() {
@@ -167,9 +159,6 @@
   const elimBar = $('elimBar');
   const elimText = $('elimText');
   const elimReset = $('elimReset');
-  const historySection = $('historySection');
-  const historyList = $('historyList');
-  const clearHistory = $('clearHistory');
 
   const editor = $('editor');
   const wheelName = $('wheelName');
@@ -544,11 +533,6 @@
           : 'Alle waren einmal dran – das Rad startet neu.';
     }
 
-    state.history.unshift({ t: Date.now(), label, wheel: wheel.name, color });
-    state.history.length = Math.min(state.history.length, MAX_HISTORY);
-    save();
-    renderHistory();
-
     resultEl.replaceChildren('Ergebnis: ', Object.assign(document.createElement('strong'), { textContent: label }));
     overlay.hidden = false;
     setBackgroundInert(true);
@@ -608,40 +592,9 @@
     elimReset.hidden = wheel.eliminated.length === 0;
   }
 
-  function formatTime(t) {
-    const d = new Date(t);
-    const time = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    if (d.toDateString() === new Date().toDateString()) return time;
-    return `${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${time}`;
-  }
-
-  function renderHistory() {
-    historySection.hidden = state.history.length === 0;
-    historyList.replaceChildren(
-      ...state.history.map((h) => {
-        const li = document.createElement('li');
-        const dot = document.createElement('span');
-        dot.className = 'h-dot';
-        dot.style.background = /^#[0-9a-f]{6}$/i.test(h.color) ? h.color : 'var(--muted)';
-        const label = document.createElement('span');
-        label.className = 'h-label';
-        label.textContent = h.label;
-        const wheelName = document.createElement('small');
-        wheelName.textContent = h.wheel;
-        label.append(wheelName);
-        const meta = document.createElement('span');
-        meta.className = 'h-meta';
-        meta.textContent = formatTime(h.t);
-        li.append(dot, label, meta);
-        return li;
-      }),
-    );
-  }
-
   function renderMain() {
     renderWheelSelect();
     renderElimBar();
-    renderHistory();
     drawWheel();
   }
 
@@ -775,12 +728,6 @@
     save();
     renderElimBar();
     drawWheel();
-  });
-  clearHistory.addEventListener('click', () => {
-    if (!confirm('Verlauf wirklich löschen?')) return;
-    state.history = [];
-    save();
-    renderHistory();
   });
 
   document.addEventListener('keydown', (e) => {
