@@ -8,6 +8,7 @@ installs to the home screen, and keeps everything on the device (no tracking, no
 - Configurable number of options (2–30): `−` / `+` stepper or type the number, edit each label
 - Several wheels (e.g. "Was essen wir?", "Ja oder Nein?"), switchable from the top bar; new / duplicate / delete
 - Fair results: the winner is drawn with `crypto.getRandomValues` (unbiased), then the wheel animates to it
+- Spin with the button, by tapping the wheel, or by flicking it with a finger (direction and strength follow the gesture; the result stays random)
 - Optional "ohne Zurücklegen" mode: a drawn option leaves the wheel until everyone had their turn
 - Shuffle, tick sound, vibration (Android), confetti, dark mode
 - Everything is saved in `localStorage` on the device
