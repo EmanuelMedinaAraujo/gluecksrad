@@ -471,8 +471,10 @@
     return 1 - Math.pow(1 - t, 4);
   }
 
-  function spin() {
-    if (spinning || !overlay.hidden || editor.open) return;
+  // `velocity` (rad/ms, sign = direction) comes from a flick; without it the wheel spins clockwise
+  // with the usual random strength. Either way the winner is drawn independently of the gesture.
+  function spin(velocity) {
+    if (spinning || drag || !overlay.hidden || editor.open) return;
     const wheel = activeWheel();
     const idx = visibleIndices(wheel);
     const n = idx.length;
@@ -484,10 +486,21 @@
     const seg = TAU / n;
     const landing = (winner + 0.12 + 0.76 * random()) * seg;
     const reduced = reducedMotionQuery.matches;
+    const dir = velocity < 0 ? -1 : 1;
+    const speed = Math.abs(velocity || 0);
     const start = rotation;
-    const turns = reduced ? 2 : 4 + randomInt(3);
-    const end = start + turns * TAU + mod(-landing - start, TAU);
-    const duration = reduced ? 1800 : state.settings.duration * (0.9 + 0.2 * random());
+    let duration = reduced ? 1800 : state.settings.duration * (0.9 + 0.2 * random());
+    let turns = reduced ? 2 : 4 + randomInt(3);
+    if (speed && !reduced) {
+      // easeOut starts at 4 × (distance / duration): pick the distance that keeps the finger's speed.
+      turns = Math.max(1, Math.min(12, Math.floor((speed * duration) / 4 / TAU)));
+    }
+    const distance = turns * TAU + mod(dir * (-landing - start), TAU);
+    if (speed && !reduced) {
+      const base = state.settings.duration;
+      duration = Math.max(0.5 * base, Math.min(1.5 * base, (4 * distance) / speed));
+    }
+    const end = start + dir * distance;
 
     setSpinning(true);
     resultEl.textContent = '';
@@ -708,11 +721,83 @@
     wheelName.select();
   }
 
+  // ---------- Drag & flick ----------
+
+  // The wheel follows the finger (or mouse) around its centre. Letting go with enough speed spins it
+  // in that direction; a plain tap spins it like the button does.
+  const FLICK_MIN = 0.0025; // rad/ms, roughly 0.4 turns per second
+  const TAP_SLOP = 8; // px
+  let drag = null;
+
+  function pointerAngle(e) {
+    const r = canvas.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    return { angle: Math.atan2(dy, dx), dist: Math.hypot(dx, dy), radius: r.width / 2 };
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (drag || spinning || !overlay.hidden || editor.open) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    ensureAudio();
+    const p = pointerAngle(e);
+    drag = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      angle: p.angle,
+      moved: false,
+      samples: [{ t: e.timeStamp, rot: rotation }],
+      slice: sliceAt(rotation, visibleIndices(activeWheel()).length),
+    };
+    canvas.classList.add('is-dragging');
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const p = pointerAngle(e);
+    if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < TAP_SLOP) return;
+    drag.moved = true;
+    // Near the centre the angle jumps wildly, so only follow the finger further out.
+    if (p.dist > p.radius * 0.12) rotation += mod(p.angle - drag.angle + Math.PI, TAU) - Math.PI;
+    drag.angle = p.angle;
+    drag.samples.push({ t: e.timeStamp, rot: rotation });
+    if (drag.samples.length > 20) drag.samples.shift();
+    const s = sliceAt(rotation, visibleIndices(activeWheel()).length);
+    if (s !== drag.slice) {
+      drag.slice = s;
+      tick();
+    }
+    drawWheel();
+  });
+
+  function endDrag(e, cancelled) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const { moved, samples } = drag;
+    drag = null;
+    canvas.classList.remove('is-dragging');
+    if (cancelled) return;
+    if (!moved) {
+      spin();
+      return;
+    }
+    // Speed over the last ~100 ms of movement; a finger that rested before lifting gives zero.
+    const last = samples[samples.length - 1];
+    const first = samples.find((s) => last.t - s.t <= 100);
+    const velocity = e.timeStamp - last.t > 60 ? 0 : (last.rot - first.rot) / Math.max(16, last.t - first.t);
+    if (Math.abs(velocity) >= FLICK_MIN) spin(velocity);
+    else rotation = mod(rotation, TAU);
+  }
+
+  canvas.addEventListener('pointerup', (e) => endDrag(e, false));
+  canvas.addEventListener('pointercancel', (e) => endDrag(e, true));
+
   // ---------- Events ----------
 
-  spinBtn.addEventListener('click', spin);
-  hubBtn.addEventListener('click', spin);
-  canvas.addEventListener('click', spin);
+  spinBtn.addEventListener('click', () => spin());
+  hubBtn.addEventListener('click', () => spin());
   editBtn.addEventListener('click', openEditor);
   wheelSelect.addEventListener('change', () => selectWheel(wheelSelect.value));
   okBtn.addEventListener('click', closeWinner);

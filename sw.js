@@ -1,7 +1,7 @@
 'use strict';
 
 // Bump this when you change any file so installed apps pick up the new version.
-const CACHE = 'gluecksrad-v3';
+const CACHE = 'gluecksrad-v4';
 const ASSETS = [
   './',
   './style.css',
