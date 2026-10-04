@@ -3,6 +3,8 @@
 An ad-free wheel of fortune as a Progressive Web App. Works fully offline after the first visit,
 installs to the home screen, and keeps everything on the device (no tracking, no network calls).
 
+**Open the app: https://emanuelmedinaaraujo.github.io/gluecksrad/**
+
 ## Features
 
 - Configurable number of options (2–30): `−` / `+` stepper or type the number, edit each label
@@ -34,21 +36,16 @@ Open http://localhost:8080. (Service workers need `https://` or `localhost`.)
 
 ## Put it on your phones
 
-A PWA has to be served over HTTPS once; after that it runs offline. Any static host works because
-all paths are relative. Note: this repo's GitHub Pages is already used by TreeFlow, so use one of these:
+The app is hosted on GitHub Pages from this repo (*Settings → Pages → Deploy from a branch →
+`main` / `(root)`*): https://emanuelmedinaaraujo.github.io/gluecksrad/
 
-1. **Own GitHub repo + Pages** (free): create an empty repo, e.g. `gluecksrad`, then
-   ```sh
-   git push https://github.com/<you>/gluecksrad.git gluecksrad:main
-   ```
-   In the new repo: *Settings → Pages → Deploy from a branch → `main` / `(root)`*.
-   The app will be at `https://<you>.github.io/gluecksrad/`.
-2. **Netlify Drop / Cloudflare Pages**: drag this folder onto https://app.netlify.com/drop.
+A PWA has to be served over HTTPS once; after that it runs offline. Any other static host works too
+because all paths are relative (e.g. drag this folder onto https://app.netlify.com/drop).
 
 Then install it:
 
-- **iPhone (Safari)**: open the URL → Share button → *Zum Home-Bildschirm*.
-- **Android (Chrome)**: open the URL → menu → *App installieren*.
+- **iPhone (Safari)**: open the link above → Share button → *Zum Home-Bildschirm*.
+- **Android (Chrome)**: open the link above → menu → *App installieren*.
 
 Open the installed app once while online; from then on it works in airplane mode.
 
