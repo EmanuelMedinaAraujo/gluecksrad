@@ -370,6 +370,8 @@
     if (!state.settings.sound) return;
     try {
       if (!audioCtx) {
+        // iOS mutes Web Audio in silent mode unless the page declares media playback.
+        if (navigator.audioSession) navigator.audioSession.type = 'playback';
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         audioCtx = new AC();
